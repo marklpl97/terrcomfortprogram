@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>KALKULATOROKON</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        body { font-family: Arial; padding: 20px; max-width: 1200px; margin: 0 auto; }
+        .window-input { margin: 15px 0; padding: 15px; border: 1px solid #ccc; }
+        canvas { border: 1px solid #666; margin-top: 20px; background: white; }
+        button { padding: 8px 15px; margin: 5px; cursor: pointer; background: #4CAF50; color: white; border: none; }
+        input, select { margin: 5px; padding: 5px; }
+        label { font-weight: bold; }
+        .controls { margin: 15px 0; padding: 15px; background: #f5f5f5; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>KALKULATOROKON</h1>
+    <label>Количество окон (1-10): <input type="number" id="windowCount" min="1" max="10" value="1" onchange="renderInputs()"></label>
+    
+    <div class="controls">
+        <label>Масштаб изображения: 
+            <input type="range" id="scaleSlider" min="0.1" max="2.0" step="0.1" value="0.7" oninput="updateScaleValue()">
+            <span id="scaleValue">0.7</span>
+        </label>
+    </div>
+    
+    <div id="inputsContainer"></div>
+    <div>
+        <button onclick="downloadExcel()">Скачать Excel</button>
+        <button onclick="drawWindows()">Обновить чертеж</button>
+        <button onclick="downloadDrawing()">Скачать чертеж (.png)</button>
+    </div>
+    <canvas id="canvas" width="1200" height="800"></canvas>
+
+    <script>
+        let windowData = [];
+        let currentScale = 0.7;
+
+        function updateScaleValue() {
+            const slider = document.getElementById('scaleSlider');
+            currentScale = parseFloat(slider.value);
+            document.getElementById('scaleValue').textContent = currentScale.toFixed(1);
+        }
+
+        function renderInputs() {
+            const count = parseInt(document.getElementById('windowCount').value);
+            const container = document.getElementById('inputsContainer');
+            container.innerHTML = '';
+            windowData = [];
+
+            for (let i = 1; i <= count; i++) {
+                const div = document.createElement('div');
+                div.className = 'window-input';
+                div.innerHTML = `
+                    <h3>Окно A${i}</h3>
+                    Крепеж: <select id="fix${i}">
+                        <option>Л</option><option>ПР</option><option>ППС</option><option>ПМС</option><option>ФЗ</option>
+                    </select><br>
+                    Молния: <select id="zipper${i}">
+                        <option value="0">нет</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                    </select><br>
+                    Верх (см): <input type="number" id="top${i}" required><br>
+                    Низ (см): <input type="number" id="bottom${i}" required><br>
+                    Лев (см): <input type="number" id="left${i}" required><br>
+                    Пр (см): <input type="number" id="right${i}" required><br>
+                `;
+                container.appendChild(div);
+                windowData.push({
+                    id: `A${i}`,
+                    fix: 'Л',
+                    top: 0,
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    zipper: '0'
+                });
+            }
+        }
+
+        function collectData() {
+            windowData.forEach((win, i) => {
+                const idx = i + 1;
+                win.fix = document.getElementById(`fix${idx}`).value;
+                win.zipper = document.getElementById(`zipper${idx}`).value || '0';
+                win.top = parseFloat(document.getElementById(`top${idx}`).value) || 0;
+                win.bottom = parseFloat(document.getElementById(`bottom${idx}`).value) || 0;
+                win.left = parseFloat(document.getElementById(`left${idx}`).value) || 0;
+                win.right = parseFloat(document.getElementById(`right${idx}`).value) || 0;
+            });
+        }
+
+        function downloadExcel() {
+            collectData();
+            const wsData = [
+                ['Окно', 'Верх (см)', 'Низ (см)', 'Лев (см)', 'Пр (см)', 'Крепеж', 'Молния', 'Max b (см)', 'Max h (см)', 'S (м²)', 'S с окант. (м²)']
+            ];
+
+            windowData.forEach(win => {
+                const maxB = Math.max(win.top, win.bottom);
+                const maxH = Math.max(win.left, win.right);
+                const area = (maxB * maxH) / 10000;
+                const areaWithEdge = area * 1.1;
+
+                wsData.push([
+                    win.id,
+                    win.top,
+                    win.bottom,
+                    win.left,
+                    win.right,
+                    win.fix,
+                    win.zipper,
+                    maxB,
+                    maxH,
+                    area.toFixed(4),
+                    areaWithEdge.toFixed(4)
+                ]);
+            });
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            XLSX.utils.book_append_sheet(wb, ws, 'Окна');
+            XLSX.writeFile(wb, 'KALKULATOROKON.xlsx');
+        }
+
+        function calculateInnerContour(points, offset) {
+            function getNormal(x1, y1, x2, y2) {
+                const dx = x2 - x1;
+                const dy = y2 - y1;
+                const length = Math.sqrt(dx * dx + dy * dy);
+                return {
+                    x: -dy / length * offset,
+                    y: dx / length * offset
+                };
+            }
+
+            const normals = [];
+            const len = points.length;
+            for (let i = 0; i < len; i++) {
+                const p1 = points[i];
+                const p2 = points[(i + 1) % len];
+                normals.push(getNormal(p1.x, p1.y, p2.x, p2.y));
+            }
+
+            const innerPoints = [];
+            for (let i = 0; i < len; i++) {
+                const prevNormal = normals[(i - 1 + len) % len];
+                const currNormal = normals[i];
+                const point = points[i];
+
+                const A1 = {
+                    x: point.x + prevNormal.x,
+                    y: point.y + prevNormal.y
+                };
+                const A2 = {
+                    x: point.x + prevNormal.x + (points[(i - 1 + len) % len].x - point.x),
+                    y: point.y + prevNormal.y + (points[(i - 1 + len) % len].y - point.y)
+                };
+
+                const B1 = {
+                    x: point.x + currNormal.x,
+                    y: point.y + currNormal.y
+                };
+                const B2 = {
+                    x: point.x + currNormal.x + (points[(i + 1) % len].x - point.x),
+                    y: point.y + currNormal.y + (points[(i + 1) % len].y - point.y)
+                };
+
+                const denominator = (A1.x - A2.x) * (B1.y - B2.y) - (A1.y - A2.y) * (B1.x - B2.x);
+                if (Math.abs(denominator) < 0.0001) {
+                    innerPoints.push({
+                        x: point.x + currNormal.x,
+                        y: point.y + currNormal.y
+                    });
+                } else {
+                    const t = ((A1.x - B1.x) * (B1.y - B2.y) - (A1.y - B1.y) * (B1.x - B2.x)) / denominator;
+                    innerPoints.push({
+                        x: A1.x + t * (A2.x - A1.x),
+                        y: A1.y + t * (A2.y - A1.y)
+                    });
+                }
+            }
+
+            return innerPoints;
+        }
+
+        // Рисование волнистой линии (зигзаг)
+        function drawWavyLine(ctx, startX, startY, endX, endY, waveLength = 6, amplitude = 3) {
+            const dx = endX - startX;
+            const dy = endY - startY;
+            const length = Math.sqrt(dx * dx + dy * dy);
+            const wavesCount = Math.floor(length / waveLength);
+            const angle = Math.atan2(dy, dx);
+
+            ctx.save();
+            ctx.translate(startX, startY);
+            ctx.rotate(angle);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            for (let i = 0; i < wavesCount; i++) {
+                const x = i * waveLength;
+                const y = (i % 2 === 0) ? amplitude : -amplitude;
+                ctx.lineTo(x, y);
+            }
+            ctx.lineTo(length, 0);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawWindows() {
+            collectData();
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            ctx.fillStyle = '#000';
+
+            const maxBottomWidth = Math.max(...windowData.map(win => win.bottom));
+            const maxHeight = Math.max(...windowData.flatMap(win => [win.left, win.right]));
+            const offset = 10;
+
+            // Используем настраиваемый масштаб вместо автоматического расчета
+            const scale = currentScale;
+
+            let x = 50 + offset;
+            let y = 50 + offset;
+            let rowHeight = 0;
+            const padding = 30;
+
+            windowData.forEach(win => {
+                const bottomWidth = win.bottom * scale;
+                const topWidth = win.top * scale;
+                const leftHeight = win.left * scale;
+                const rightHeight = win.right * scale;
+                const windowHeight = Math.max(leftHeight, rightHeight);
+
+                if (x + bottomWidth + padding + offset * 2 > canvas.width) {
+                    x = 50 + offset;
+                    y += rowHeight + padding;
+                    rowHeight = 0;
+                }
+
+                const outerPoints = [
+                    { x: x + (bottomWidth - topWidth) / 2, y: y + (windowHeight - leftHeight) },  // topLeft
+                    { x: x + (bottomWidth + topWidth) / 2, y: y + (windowHeight - rightHeight) }, // topRight
+                    { x: x + bottomWidth, y: y + windowHeight },                               // bottomRight
+                    { x: x, y: y + windowHeight }                                              // bottomLeft
+                ];
+
+                const innerPoints = calculateInnerContour(outerPoints, offset);
+
+                // Рисуем внешний контур
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                outerPoints.forEach((point, i) => {
+                    if (i === 0) ctx.moveTo(point.x, point.y);
+                    else ctx.lineTo(point.x, point.y);
+                });
+                ctx.closePath();
+                ctx.stroke();
+
+                // Рисуем внутренний контур
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                innerPoints.forEach((point, i) => {
+                    if (i === 0) ctx.moveTo(point.x, point.y);
+                    else ctx.lineTo(point.x, point.y);
+                });
+                ctx.closePath();
+                ctx.stroke();
+
+                const centerX = x + bottomWidth / 2;
+                const centerY = y + windowHeight / 2;
+
+                ctx.fillText(`${win.id} (${win.fix})`, centerX, centerY);
+
+                ctx.fillText(`b=${win.top}`,
+                    (outerPoints[0].x + outerPoints[1].x) / 2,
+                    (outerPoints[0].y + outerPoints[1].y) / 2 + 20);
+
+                ctx.fillText(`b=${win.bottom}`,
+                    (outerPoints[2].x + outerPoints[3].x) / 2,
+                    outerPoints[2].y - 20);
+
+                ctx.save();
+                ctx.translate(outerPoints[3].x + 20, (outerPoints[0].y + outerPoints[3].y) / 2);
+                ctx.rotate(-Math.PI / 2);
+                ctx.fillText(`h=${win.left}`, 0, 0);
+                ctx.restore();
+
+                ctx.save();
+                ctx.translate(outerPoints[2].x - 20, (outerPoints[1].y + outerPoints[2].y) / 2);
+                ctx.rotate(Math.PI / 2);
+                ctx.fillText(`h=${win.right}`, 0, 0);
+                ctx.restore();
+
+                // Рисуем волнистые линии с толщиной 0.3
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 0.3;
+
+                if (win.zipper === '1') {
+                    // Волнистая линия по середине окна вертикально
+                    const midX = x + bottomWidth / 2;
+                    const startY = y + windowHeight;
+                    const endY = y + (windowHeight - Math.max(leftHeight, rightHeight));
+                    drawWavyLine(ctx, midX, startY, midX, endY);
+                } else if (win.zipper === '2') {
+                    const leftInnerPointTop = innerPoints[0]; // topLeft внутренний
+                    const leftInnerPointBottom = innerPoints[3]; // bottomLeft внутренний
+                    const rightInnerPointTop = innerPoints[1]; // topRight внутренний
+                    const rightInnerPointBottom = innerPoints[2]; // bottomRight внутренний
+
+                    // Левая волнистая линия сдвинута на +20px вправо
+                    const leftLineX = ((leftInnerPointTop.x + outerPoints[3].x) / 2 - 3) + 20;
+                    drawWavyLine(ctx, leftLineX, leftInnerPointBottom.y, leftLineX, leftInnerPointTop.y);
+
+                    // Правая волнистая линия сдвинута на -20px влево
+                    const rightLineX = ((rightInnerPointTop.x + outerPoints[2].x) / 2 + 3) - 20;
+                    drawWavyLine(ctx, rightLineX, rightInnerPointBottom.y, rightLineX, rightInnerPointTop.y);
+                }
+
+                x += bottomWidth + padding;
+                rowHeight = Math.max(rowHeight, windowHeight + 40);
+            });
+        }
+
+        function downloadDrawing() {
+            html2canvas(document.querySelector('canvas')).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'windows-drawing.png';
+                link.href = canvas.toDataURL();
+                link.click();
+            });
+        }
+
+        renderInputs();
+    </script>
+</body>
+</html>
+```
