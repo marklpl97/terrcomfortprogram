@@ -70,6 +70,17 @@
         }
         .download-btn { transition: all 0.2s ease; }
         .download-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
+        .qr-container {
+            transition: all 0.3s ease;
+            max-height: 500px;
+            overflow: hidden;
+        }
+        .qr-container.hidden {
+            max-height: 0;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: none !important;
+        }
     </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
@@ -128,6 +139,15 @@
                            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
                            min="0" placeholder="0.00">
                 </div>
+
+                <!-- Advance Payment Selection -->
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Аванс внесен</label>
+                    <select id="advancePaid" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base">
+                        <option value="нет">Нет</option>
+                        <option value="да">Да</option>
+                    </select>
+                </div>
             </div>
 
             <!-- Dimensions Input with per-window fastening -->
@@ -176,6 +196,17 @@
                             <a href="http://www.tercomfort.ru" target="_blank" class="text-blue-600 hover:underline ml-2">www.tercomfort.ru</a>
                         </p>
                     </div>
+
+                    <!-- QR Code Section - shown only if advance paid = yes -->
+                    <div id="qrSection" class="qr-container hidden mt-6 pt-4 border-t border-gold">
+                        <p class="text-center text-dark-text text-sm mb-3 font-medium">
+                            ✓ Аванс внесен — отсканируйте QR-код для оплаты
+                        </p>
+                        <div class="flex justify-center">
+                            <img src="qr.jpg" alt="QR-код для оплаты" 
+                                 class="w-40 h-40 md:w-48 md:h-48 object-contain border-4 border-gold rounded-lg bg-white p-2 shadow-lg">
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -215,6 +246,7 @@
         const windowCountSelect = document.getElementById('windowCount');
         const coefficientInput = document.getElementById('coefficient');
         const zipperLengthInput = document.getElementById('zipperLength');
+        const advancePaidSelect = document.getElementById('advancePaid');
         const dimensionsInputs = document.getElementById('dimensionsInputs');
         const resultsContainer = document.getElementById('resultsContainer');
         const resultsGrid = document.getElementById('resultsGrid');
@@ -222,6 +254,16 @@
         const infoList = document.getElementById('infoList');
         const pdfDownloadBtnWrapper = document.getElementById('pdfDownloadBtnWrapper');
         const downloadPdfBtn = document.getElementById('downloadPdfBtn');
+        const qrSection = document.getElementById('qrSection');
+
+        // Toggle QR code visibility
+        function toggleQRCode() {
+            if (advancePaidSelect.value === 'да') {
+                qrSection.classList.remove('hidden');
+            } else {
+                qrSection.classList.add('hidden');
+            }
+        }
 
         // Initialize dimensions with fastening dropdown for each window
         function initializeDimensions() {
@@ -322,7 +364,7 @@
             const finishedArea = totalAreaRounded * coefficient;
             const finishedAreaRounded = Math.round(finishedArea * 100) / 100;
 
-            // 🔄 Новая логика: расчет стоимости для каждого окна отдельно
+            // 🔄 Расчет стоимости для каждого окна отдельно
             let pvcTotalPrice = 0;
             windows.forEach(win => {
                 const pricePerM2 = priceData[city][filmType][win.fastening] || 0;
@@ -377,7 +419,7 @@
                     <p class="text-sm text-dark-text mb-1">Монтаж на дерево (не менее ${minMountingCost.toLocaleString()} руб)</p>
                     <p class="text-xl font-bold text-gold-highlight">${woodMountingCost.toLocaleString()} руб</p>
                 </div>
-                <div class="bg-dark-card p-4 rounded-lg shadow-sm border border-gold result-item ">
+                <div class="bg-dark-card p-4 rounded-lg shadow-sm border border-gold result-item">
                     <p class="text-sm text-dark-text mb-1">Монтаж на металл (не менее ${minMountingCost.toLocaleString()} руб)</p>
                     <p class="text-xl font-bold text-gold-highlight">${metalMountingCost.toLocaleString()} руб</p>
                 </div>
@@ -424,6 +466,9 @@
                 addInfoItem(`Монтаж на металлическую поверхность: ${mountingMetalPrice[city]} руб/м²`);
             }
            
+            // Update QR code visibility
+            toggleQRCode();
+           
             resultsContainer.classList.remove('hidden');
             noResultsMessage.classList.add('hidden');
             pdfDownloadBtnWrapper.classList.remove('hidden');
@@ -463,6 +508,13 @@
         windowCountSelect.addEventListener('change', () => { initializeDimensions(); calculateResults(); });
         coefficientInput.addEventListener('input', calculateResults);
         zipperLengthInput.addEventListener('input', calculateResults);
+        advancePaidSelect.addEventListener('change', () => {
+            toggleQRCode();
+            // Recalculate to update QR visibility in results if already shown
+            if (!resultsContainer.classList.contains('hidden')) {
+                calculateResults();
+            }
+        });
         downloadPdfBtn.addEventListener('click', generatePDF);
        
         initializeDimensions();
