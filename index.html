@@ -2,350 +2,476 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>KALKULATOROKON</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>РАСЧЕТ СТОИМОСТИ ОКОН ПВХ — Триколория Комфорта</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'blue-50': '#eff6ff',
+                        'indigo-100': '#e0e7ff',
+                        'green-50': '#f0fdf4',
+                        'emerald-50': '#ecfdf5',
+                        'green-200': '#bbf7d0',
+                        'gold': '#D4AF37',
+                        'dark-bg': '#2d2d2d',
+                        'dark-card': '#3a3a3a',
+                        'dark-text': '#ffffff',
+                        'gold-highlight': '#F5C54B'
+                    },
+                    fontFamily: {
+                        'serif': ['Georgia', 'serif'],
+                        'sans': ['Inter', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        body { font-family: Arial; padding: 20px; max-width: 1200px; margin: 0 auto; }
-        .window-input { margin: 15px 0; padding: 15px; border: 1px solid #ccc; }
-        canvas { border: 1px solid #666; margin-top: 20px; background: white; }
-        button { padding: 8px 15px; margin: 5px; cursor: pointer; background: #4CAF50; color: white; border: none; }
-        input, select { margin: 5px; padding: 5px; }
-        label { font-weight: bold; }
-        .controls { margin: 15px 0; padding: 15px; background: #f5f5f5; border-radius: 5px; }
+        @media print {
+            body { background: white !important; padding: 0 !important; margin: 0 !important; }
+            .no-print { display: none !important; }
+            .pdf-print-area {
+                background: #2d2d2d !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                margin: 0 !important; padding: 0 !important;
+                box-sizing: border-box; width: 100% !important;
+            }
+            #pdfExportArea {
+                margin: 0 !important; padding: 0 !important;
+                max-width: none !important; width: 100% !important;
+                box-sizing: border-box;
+            }
+            .bg-dark-bg {
+                background-color: #2d2d2d !important;
+                -webkit-print-color-adjust: exact; print-color-adjust: exact;
+                padding: 0.25rem 0.5rem !important; margin: 0 !important;
+            }
+            .bg-dark-card {
+                background-color: #3a3a3a !important;
+                -webkit-print-color-adjust: exact; print-color-adjust: exact;
+                padding: 0.25rem !important;
+            }
+            .border-gold { border-color: #D4AF37 !important; }
+            .text-gold-highlight { color: #F5C54B !important; }
+            .result-item { break-inside: avoid; page-break-inside: avoid; }
+            .border-b-2 { padding-bottom: 0.3rem !important; margin-bottom: 0.5rem !important; }
+        }
+        .result-item { transition: all 0.2s ease; }
+        .result-item:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+        .custom-bullet {
+            display: inline-block; width: 8px; height: 8px;
+            background-color: #F5C54B; border-radius: 2px;
+            margin-right: 12px; flex-shrink: 0; margin-top: 8px;
+        }
+        .download-btn { transition: all 0.2s ease; }
+        .download-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
     </style>
 </head>
-<body>
-    <h1>KALKULATOROKON</h1>
-    <label>Количество окон (1-10): <input type="number" id="windowCount" min="1" max="10" value="1" onchange="renderInputs()"></label>
-    
-    <div class="controls">
-        <label>Масштаб изображения: 
-            <input type="range" id="scaleSlider" min="0.1" max="2.0" step="0.1" value="0.7" oninput="updateScaleValue()">
-            <span id="scaleValue">0.7</span>
-        </label>
+<body class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div class="max-w-4xl mx-auto">
+        <!-- Main Card with Form -->
+        <div class="bg-white rounded-2xl shadow-xl p-6 md:p-8 no-print">
+            <h1 class="text-3xl md:text-4xl font-bold text-center text-gray-800 mb-8">
+                РАСЧЕТ СТОИМОСТИ ОКОН ПВХ
+            </h1>
+           
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <!-- City Selection -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Город</label>
+                    <select id="city" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base">
+                        <option value="">Выберите город</option>
+                        <option value="СПБ">СПБ</option>
+                        <option value="Пенза">Пенза</option>
+                        <option value="МСК">МСК</option>
+                    </select>
+                </div>
+
+                <!-- Film Type -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Пленка</label>
+                    <select id="filmType" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base">
+                        <option value="">Выберите пленку</option>
+                        <option value="Прозрачная">Прозрачная</option>
+                        <option value="Тонированная">Тонированная</option>
+                    </select>
+                </div>
+
+                <!-- Window Count -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Количество окон</label>
+                    <select id="windowCount" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base">
+                        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                        <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+                        <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+                        <option value="10">10</option>
+                    </select>
+                </div>
+
+                <!-- Coefficient -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Коэффициент расчета</label>
+                    <input type="number" id="coefficient" step="0.1" value="1.1"
+                           class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
+                           min="1" max="2">
+                </div>
+
+                <!-- Zipper Input -->
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Молния (пог. м)</label>
+                    <input type="number" id="zipperLength" step="0.01" value="0.00"
+                           class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
+                           min="0" placeholder="0.00">
+                </div>
+            </div>
+
+            <!-- Dimensions Input with per-window fastening -->
+            <div id="dimensionsContainer" class="mb-8">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Размеры окон (м)</h3>
+                <div id="dimensionsInputs" class="space-y-4">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Download PDF Button -->
+            <div id="pdfDownloadBtnWrapper" class="flex justify-center mt-6 mb-4 no-print hidden">
+                <button id="downloadPdfBtn" class="bg-gradient-to-r from-green-600 to-emerald-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg download-btn flex items-center gap-2 text-lg">
+                    📄 Скачать коммерческое предложение (PDF)
+                </button>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div id="resultsContainer" class="hidden mt-8">
+            <div id="pdfExportArea" class="pdf-print-area">
+                <div class="bg-dark-bg rounded-xl shadow-2xl p-6 border border-gold">
+                    <div class="flex justify-center mb-6">
+                        <div class="text-center">
+                            <div class="text-2xl font-bold tracking-wide text-gold-highlight">ТРИКОЛОРИЯ КОМФОРТА</div>
+                            <div class="text-2xl font-bold text-center text-dark-text">МЯГКИЕ ОКНА ПВХ</div>
+                        </div>
+                    </div>
+
+                    <div class="border-b-2 border-gold pb-4 mb-6">
+                        <h2 class="text-2xl font-bold text-center text-dark-text">
+                            Результаты расчета мягких окон ПВХ
+                        </h2>
+                    </div>
+
+                    <div id="resultsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6"></div>
+
+                    <div id="additionalInfo" class="bg-dark-card rounded-lg p-5 border-l-4 border-gold mb-6">
+                        <ul id="infoList" class="text-dark-text leading-relaxed text-base space-y-2 list-none"></ul>
+                    </div>
+
+                    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-5 text-center">
+                        <p class="text-gray-800 font-medium text-base">
+                            Ваш личный менеджер по продажам компании Триколория Комфорта:
+                            <span class="font-bold">тел/max +7 995 282 4484</span>
+                            <a href="http://www.tercomfort.ru" target="_blank" class="text-blue-600 hover:underline ml-2">www.tercomfort.ru</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="noResultsMessage" class="text-center py-8 text-gray-500 bg-white rounded-xl shadow mt-6 no-print">
+            <p>Заполните все поля для расчета стоимости</p>
+        </div>
     </div>
-    
-    <div id="inputsContainer"></div>
-    <div>
-        <button onclick="downloadExcel()">Скачать Excel</button>
-        <button onclick="drawWindows()">Обновить чертеж</button>
-        <button onclick="downloadDrawing()">Скачать чертеж (.png)</button>
-    </div>
-    <canvas id="canvas" width="1200" height="800"></canvas>
 
     <script>
-        let windowData = [];
-        let currentScale = 0.7;
+        // Price data
+        const priceData = {
+            'Пенза': {
+                'Прозрачная': { 'люверсы': 1600, 'пластиковые ремешки': 1750, 'полиамидные скобы': 1850, 'металлические скобы': 1950, 'французские замки': 2050 },
+                'Тонированная': { 'люверсы': 1920, 'пластиковые ремешки': 2100, 'полиамидные скобы': 2220, 'металлические скобы': 2340, 'французские замки': 2460 }
+            },
+            'МСК': {
+                'Прозрачная': { 'люверсы': 1600, 'пластиковые ремешки': 1750, 'полиамидные скобы': 1950, 'металлические скобы': 2050, 'французские замки': 2150 },
+                'Тонированная': { 'люверсы': 1920, 'пластиковые ремешки': 2100, 'полиамидные скобы': 2340, 'металлические скобы': 2460, 'французские замки': 2580 }
+            },
+            'СПБ': {
+                'Прозрачная': { 'люверсы': 1600, 'пластиковые ремешки': 1750, 'полиамидные скобы': 1950, 'металлические скобы': 2050, 'французские замки': 2150 },
+                'Тонированная': { 'люверсы': 1920, 'пластиковые ремешки': 2100, 'полиамидные скобы': 2340, 'металлические скобы': 2460, 'французские замки': 2580 }
+            }
+        };
 
-        function updateScaleValue() {
-            const slider = document.getElementById('scaleSlider');
-            currentScale = parseFloat(slider.value);
-            document.getElementById('scaleValue').textContent = currentScale.toFixed(1);
-        }
+        const strapPrice = { 'Пенза': 100, 'МСК': 100, 'СПБ': 100 };
+        const mountingWoodPrice = { 'Пенза': 600, 'МСК': 700, 'СПБ': 700 };
+        const mountingMetalPrice = { 'Пенза': 800, 'МСК': 900, 'СПБ': 900 };
+        const zipperPrice = { 'Пенза': 850, 'МСК': 850, 'СПБ': 850 };
 
-        function renderInputs() {
-            const count = parseInt(document.getElementById('windowCount').value);
-            const container = document.getElementById('inputsContainer');
-            container.innerHTML = '';
-            windowData = [];
+        function roundToNearest100(value) { return Math.floor(value / 100) * 100; }
 
-            for (let i = 1; i <= count; i++) {
+        // DOM elements
+        const citySelect = document.getElementById('city');
+        const filmTypeSelect = document.getElementById('filmType');
+        const windowCountSelect = document.getElementById('windowCount');
+        const coefficientInput = document.getElementById('coefficient');
+        const zipperLengthInput = document.getElementById('zipperLength');
+        const dimensionsInputs = document.getElementById('dimensionsInputs');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const resultsGrid = document.getElementById('resultsGrid');
+        const noResultsMessage = document.getElementById('noResultsMessage');
+        const infoList = document.getElementById('infoList');
+        const pdfDownloadBtnWrapper = document.getElementById('pdfDownloadBtnWrapper');
+        const downloadPdfBtn = document.getElementById('downloadPdfBtn');
+
+        // Initialize dimensions with fastening dropdown for each window
+        function initializeDimensions() {
+            const count = parseInt(windowCountSelect.value);
+            dimensionsInputs.innerHTML = '';
+            for (let i = 0; i < count; i++) {
                 const div = document.createElement('div');
-                div.className = 'window-input';
+                div.className = 'grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200';
                 div.innerHTML = `
-                    <h3>Окно A${i}</h3>
-                    Крепеж: <select id="fix${i}">
-                        <option>Л</option><option>ПР</option><option>ППС</option><option>ПМС</option><option>ФЗ</option>
-                    </select><br>
-                    Молния: <select id="zipper${i}">
-                        <option value="0">нет</option>
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                    </select><br>
-                    Верх (см): <input type="number" id="top${i}" required><br>
-                    Низ (см): <input type="number" id="bottom${i}" required><br>
-                    Лев (см): <input type="number" id="left${i}" required><br>
-                    Пр (см): <input type="number" id="right${i}" required><br>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600 mb-1">Ширина ${i + 1} (м)</label>
+                        <input type="number" step="0.01" data-index="${i}" data-field="width" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 dimension-input" placeholder="0.00" min="0">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600 mb-1">Высота ${i + 1} (м)</label>
+                        <input type="number" step="0.01" data-index="${i}" data-field="height" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 dimension-input" placeholder="0.00" min="0">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600 mb-1">Крепеж ${i + 1}</label>
+                        <select data-index="${i}" data-field="fastening" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 dimension-fastening">
+                            <option value="">Выберите</option>
+                            <option value="люверсы">люверсы</option>
+                            <option value="пластиковые ремешки">пластиковые ремешки</option>
+                            <option value="полиамидные скобы">полиамидные скобы</option>
+                            <option value="металлические скобы">металлические скобы</option>
+                            <option value="французские замки">французские замки</option>
+                        </select>
+                    </div>
                 `;
-                container.appendChild(div);
-                windowData.push({
-                    id: `A${i}`,
-                    fix: 'Л',
-                    top: 0,
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    zipper: '0'
+                dimensionsInputs.appendChild(div);
+            }
+            document.querySelectorAll('.dimension-input, .dimension-fastening').forEach(input => {
+                input.addEventListener('input', calculateResults);
+            });
+        }
+
+        function getWindowData() {
+            const windows = [];
+            const count = parseInt(windowCountSelect.value);
+            for (let i = 0; i < count; i++) {
+                const widthInput = document.querySelector(`.dimension-input[data-index="${i}"][data-field="width"]`);
+                const heightInput = document.querySelector(`.dimension-input[data-index="${i}"][data-field="height"]`);
+                const fasteningSelect = document.querySelector(`.dimension-fastening[data-index="${i}"]`);
+                windows.push({
+                    width: parseFloat(widthInput?.value) || 0,
+                    height: parseFloat(heightInput?.value) || 0,
+                    fastening: fasteningSelect?.value || ''
                 });
             }
+            return windows;
         }
 
-        function collectData() {
-            windowData.forEach((win, i) => {
-                const idx = i + 1;
-                win.fix = document.getElementById(`fix${idx}`).value;
-                win.zipper = document.getElementById(`zipper${idx}`).value || '0';
-                win.top = parseFloat(document.getElementById(`top${idx}`).value) || 0;
-                win.bottom = parseFloat(document.getElementById(`bottom${idx}`).value) || 0;
-                win.left = parseFloat(document.getElementById(`left${idx}`).value) || 0;
-                win.right = parseFloat(document.getElementById(`right${idx}`).value) || 0;
-            });
-        }
-
-        function downloadExcel() {
-            collectData();
-            const wsData = [
-                ['Окно', 'Верх (см)', 'Низ (см)', 'Лев (см)', 'Пр (см)', 'Крепеж', 'Молния', 'Max b (см)', 'Max h (см)', 'S (м²)', 'S с окант. (м²)']
-            ];
-
-            windowData.forEach(win => {
-                const maxB = Math.max(win.top, win.bottom);
-                const maxH = Math.max(win.left, win.right);
-                const area = (maxB * maxH) / 10000;
-                const areaWithEdge = area * 1.1;
-
-                wsData.push([
-                    win.id,
-                    win.top,
-                    win.bottom,
-                    win.left,
-                    win.right,
-                    win.fix,
-                    win.zipper,
-                    maxB,
-                    maxH,
-                    area.toFixed(4),
-                    areaWithEdge.toFixed(4)
-                ]);
-            });
-
-            const wb = XLSX.utils.book_new();
-            const ws = XLSX.utils.aoa_to_sheet(wsData);
-            XLSX.utils.book_append_sheet(wb, ws, 'Окна');
-            XLSX.writeFile(wb, 'KALKULATOROKON.xlsx');
-        }
-
-        function calculateInnerContour(points, offset) {
-            function getNormal(x1, y1, x2, y2) {
-                const dx = x2 - x1;
-                const dy = y2 - y1;
-                const length = Math.sqrt(dx * dx + dy * dy);
-                return {
-                    x: -dy / length * offset,
-                    y: dx / length * offset
-                };
+        function calculateResults() {
+            const city = citySelect.value;
+            const filmType = filmTypeSelect.value;
+            const zipperLength = parseFloat(zipperLengthInput.value) || 0;
+            const coefficient = parseFloat(coefficientInput.value) || 1.1;
+           
+            if (!city || !filmType) {
+                resultsContainer.classList.add('hidden');
+                noResultsMessage.classList.remove('hidden');
+                pdfDownloadBtnWrapper.classList.add('hidden');
+                return;
             }
 
-            const normals = [];
-            const len = points.length;
-            for (let i = 0; i < len; i++) {
-                const p1 = points[i];
-                const p2 = points[(i + 1) % len];
-                normals.push(getNormal(p1.x, p1.y, p2.x, p2.y));
-            }
-
-            const innerPoints = [];
-            for (let i = 0; i < len; i++) {
-                const prevNormal = normals[(i - 1 + len) % len];
-                const currNormal = normals[i];
-                const point = points[i];
-
-                const A1 = {
-                    x: point.x + prevNormal.x,
-                    y: point.y + prevNormal.y
-                };
-                const A2 = {
-                    x: point.x + prevNormal.x + (points[(i - 1 + len) % len].x - point.x),
-                    y: point.y + prevNormal.y + (points[(i - 1 + len) % len].y - point.y)
-                };
-
-                const B1 = {
-                    x: point.x + currNormal.x,
-                    y: point.y + currNormal.y
-                };
-                const B2 = {
-                    x: point.x + currNormal.x + (points[(i + 1) % len].x - point.x),
-                    y: point.y + currNormal.y + (points[(i + 1) % len].y - point.y)
-                };
-
-                const denominator = (A1.x - A2.x) * (B1.y - B2.y) - (A1.y - A2.y) * (B1.x - B2.x);
-                if (Math.abs(denominator) < 0.0001) {
-                    innerPoints.push({
-                        x: point.x + currNormal.x,
-                        y: point.y + currNormal.y
-                    });
-                } else {
-                    const t = ((A1.x - B1.x) * (B1.y - B2.y) - (A1.y - B1.y) * (B1.x - B2.x)) / denominator;
-                    innerPoints.push({
-                        x: A1.x + t * (A2.x - A1.x),
-                        y: A1.y + t * (A2.y - A1.y)
-                    });
+            const windows = getWindowData();
+            
+            let allValid = true;
+            for (const win of windows) {
+                if (win.width <= 0 || win.height <= 0 || !win.fastening) {
+                    allValid = false;
+                    break;
                 }
             }
-
-            return innerPoints;
-        }
-
-        // Рисование волнистой линии (зигзаг)
-        function drawWavyLine(ctx, startX, startY, endX, endY, waveLength = 6, amplitude = 3) {
-            const dx = endX - startX;
-            const dy = endY - startY;
-            const length = Math.sqrt(dx * dx + dy * dy);
-            const wavesCount = Math.floor(length / waveLength);
-            const angle = Math.atan2(dy, dx);
-
-            ctx.save();
-            ctx.translate(startX, startY);
-            ctx.rotate(angle);
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            for (let i = 0; i < wavesCount; i++) {
-                const x = i * waveLength;
-                const y = (i % 2 === 0) ? amplitude : -amplitude;
-                ctx.lineTo(x, y);
+            
+            if (!allValid) {
+                resultsContainer.classList.add('hidden');
+                noResultsMessage.classList.remove('hidden');
+                pdfDownloadBtnWrapper.classList.add('hidden');
+                return;
             }
-            ctx.lineTo(length, 0);
-            ctx.stroke();
-            ctx.restore();
+
+            let totalArea = 0;
+            let totalWidth = 0;
+            windows.forEach(win => {
+                totalArea += win.width * win.height;
+                totalWidth += win.width;
+            });
+            
+            if (totalArea === 0) {
+                resultsContainer.classList.add('hidden');
+                noResultsMessage.classList.remove('hidden');
+                pdfDownloadBtnWrapper.classList.add('hidden');
+                return;
+            }
+
+            const totalAreaRounded = Math.round(totalArea * 100) / 100;
+            const finishedArea = totalAreaRounded * coefficient;
+            const finishedAreaRounded = Math.round(finishedArea * 100) / 100;
+
+            // 🔄 Новая логика: расчет стоимости для каждого окна отдельно
+            let pvcTotalPrice = 0;
+            windows.forEach(win => {
+                const pricePerM2 = priceData[city][filmType][win.fastening] || 0;
+                const windowArea = win.width * win.height;
+                pvcTotalPrice += windowArea * pricePerM2;
+            });
+            pvcTotalPrice = Math.round(pvcTotalPrice);
+           
+            let strapCost = 0;
+            const hasNonEyelet = windows.some(w => w.fastening !== 'люверсы');
+            if (hasNonEyelet) {
+                const rawStrapCost = (totalWidth / 0.6) * strapPrice[city];
+                strapCost = roundToNearest100(rawStrapCost);
+            }
+           
+            const zipperCost = Math.round(zipperLength * zipperPrice[city]);
+            const preliminaryCost = pvcTotalPrice + strapCost + zipperCost;
+           
+            let woodMountingCost = Math.round(finishedAreaRounded * mountingWoodPrice[city]);
+            let metalMountingCost = Math.round(finishedAreaRounded * mountingMetalPrice[city]);
+            const minMountingCost = city === 'Пенза' ? 5000 : 10000;
+            if (woodMountingCost < minMountingCost) woodMountingCost = minMountingCost;
+            if (metalMountingCost < minMountingCost) metalMountingCost = minMountingCost;
+           
+            // Populate results grid
+            resultsGrid.innerHTML = `
+                <div class="bg-dark-card p-4 rounded-lg shadow-sm border border-gold result-item">
+                    <p class="text-sm text-dark-text mb-1">Общая площадь окон</p>
+                    <p class="text-xl font-bold text-gold-highlight">${totalAreaRounded} м²</p>
+                </div>
+                <div class="bg-dark-card p-4 rounded-lg shadow-sm border border-gold result-item">
+                    <p class="text-sm text-dark-text mb-1">Площадь готового окна</p>
+                    <p class="text-xl font-bold text-gold-highlight">${finishedAreaRounded} м²</p>
+                </div>
+                <div class="bg-dark-card p-4 rounded-lg shadow-sm border border-gold result-item">
+                    <p class="text-sm text-dark-text mb-1">Стоимость ПВХ окон</p>
+                    <p class="text-xl font-bold text-gold-highlight">${pvcTotalPrice.toLocaleString()} руб</p>
+                </div>
+                <div class="bg-dark-card p-4 rounded-lg shadow-sm border border-gold result-item">
+                    <p class="text-sm text-dark-text mb-1">Стоимость ремешков</p>
+                    <p class="text-xl font-bold text-gold-highlight">${strapCost.toLocaleString()} руб</p>
+                </div>
+                <div class="bg-dark-card p-4 rounded-lg shadow-sm border border-gold result-item">
+                    <p class="text-sm text-dark-text mb-1">Стоимость молнии</p>
+                    <p class="text-xl font-bold text-gold-highlight">${zipperCost.toLocaleString()} руб</p>
+                </div>
+                <div class="bg-dark-card p-4 rounded-lg shadow-sm border border-gold result-item">
+                    <p class="text-sm text-dark-text mb-1">Предварительная стоимость без учета монтажа</p>
+                    <p class="text-xl font-bold text-gold-highlight">${preliminaryCost.toLocaleString()} руб</p>
+                </div>
+                <div class="bg-dark-card p-4 rounded-lg shadow-sm border border-gold result-item">
+                    <p class="text-sm text-dark-text mb-1">Монтаж на дерево (не менее ${minMountingCost.toLocaleString()} руб)</p>
+                    <p class="text-xl font-bold text-gold-highlight">${woodMountingCost.toLocaleString()} руб</p>
+                </div>
+                <div class="bg-dark-card p-4 rounded-lg shadow-sm border border-gold result-item md:col-span-2">
+                    <p class="text-sm text-dark-text mb-1">Монтаж на металл (не менее ${minMountingCost.toLocaleString()} руб)</p>
+                    <p class="text-xl font-bold text-gold-highlight">${metalMountingCost.toLocaleString()} руб</p>
+                </div>
+            `;
+           
+            // Build additional info block
+            infoList.innerHTML = '';
+            function addInfoItem(text) {
+                const li = document.createElement('li');
+                li.className = 'flex items-start';
+                li.innerHTML = `<span class="custom-bullet"></span><span>${text}</span>`;
+                infoList.appendChild(li);
+            }
+           
+            const uniqueFastenings = [...new Set(windows.map(w => w.fastening).filter(f => f))];
+            const fasteningDisplay = uniqueFastenings.join(', ');
+           
+            if (city === "СПБ") {
+                addInfoItem(`Пленка ПВХ 700 микрон с УФ покрытием, морозостойкая, самозатухающая ${filmType.toLowerCase()}`);
+                addInfoItem(`Крепеж: ${fasteningDisplay}`);
+                addInfoItem(`Тракторная молния: ${zipperPrice[city]} руб/пог.м`);
+                addInfoItem(`Стоимость москитной сетки: 1700 руб/м²`);
+                addInfoItem(`Стоимость двери из полиуретана: 3300 руб/м²`);
+                addInfoItem(`Монтаж на деревянную поверхность: ${mountingWoodPrice[city]} руб/м²`);
+                addInfoItem(`Монтаж на металлическую поверхность: ${mountingMetalPrice[city]} руб/м²`);
+            } else if (city === "МСК") {
+                addInfoItem(`Пленка ПВХ 700 микрон с УФ покрытием, морозостойкая, самозатухающая ${filmType.toLowerCase()}`);
+                addInfoItem(`Крепеж: ${fasteningDisplay}`);
+                addInfoItem(`Тракторная молния: ${zipperPrice[city]} руб/пог.м`);
+                addInfoItem(`Стоимость москитной сетки: 1500 руб/м²`);
+                addInfoItem(`Стоимость двери из полиуретана: 3300 руб/м²`);
+                addInfoItem(`Стоимость подвесной шторы дополнительно к стоимости окна: 3500 руб/пог.м ширины окна`);
+                addInfoItem(`Монтаж на деревянную поверхность: ${mountingWoodPrice[city]} руб/м²`);
+                addInfoItem(`Монтаж на металлическую поверхность: ${mountingMetalPrice[city]} руб/м²`);
+                addInfoItem(`Доставка СДЭК/Яндекс: 1000 руб`);
+            } else if (city === "Пенза") {
+                addInfoItem(`Пленка ПВХ 700 микрон с УФ покрытием, морозостойкая, самозатухающая ${filmType.toLowerCase()}`);
+                addInfoItem(`Крепеж: ${fasteningDisplay}`);
+                addInfoItem(`Тракторная молния: ${zipperPrice[city]} руб/пог.м`);
+                addInfoItem(`Стоимость москитной сетки: 1500 руб/м²`);
+                addInfoItem(`Стоимость двери из полиуретана: 3300 руб/м²`);
+                addInfoItem(`Стоимость подвесной шторы дополнительно к стоимости окна: 3500 руб/пог.м ширины окна`);
+                addInfoItem(`Монтаж на деревянную поверхность: ${mountingWoodPrice[city]} руб/м²`);
+                addInfoItem(`Монтаж на металлическую поверхность: ${mountingMetalPrice[city]} руб/м²`);
+            }
+           
+            resultsContainer.classList.remove('hidden');
+            noResultsMessage.classList.add('hidden');
+            pdfDownloadBtnWrapper.classList.remove('hidden');
         }
+       
+        function generatePDF() {
+            const element = document.getElementById('pdfExportArea');
+            if (!element) return;
+           
+            const btn = downloadPdfBtn;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '⏳ Генерация PDF...';
+            btn.disabled = true;
 
-        function drawWindows() {
-            collectData();
-            const canvas = document.getElementById('canvas');
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            ctx.font = '12px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.strokeStyle = '#333';
-            ctx.lineWidth = 1;
-            ctx.fillStyle = '#000';
-
-            const maxBottomWidth = Math.max(...windowData.map(win => win.bottom));
-            const maxHeight = Math.max(...windowData.flatMap(win => [win.left, win.right]));
-            const offset = 10;
-
-            // Используем настраиваемый масштаб вместо автоматического расчета
-            const scale = currentScale;
-
-            let x = 50 + offset;
-            let y = 50 + offset;
-            let rowHeight = 0;
-            const padding = 30;
-
-            windowData.forEach(win => {
-                const bottomWidth = win.bottom * scale;
-                const topWidth = win.top * scale;
-                const leftHeight = win.left * scale;
-                const rightHeight = win.right * scale;
-                const windowHeight = Math.max(leftHeight, rightHeight);
-
-                if (x + bottomWidth + padding + offset * 2 > canvas.width) {
-                    x = 50 + offset;
-                    y += rowHeight + padding;
-                    rowHeight = 0;
-                }
-
-                const outerPoints = [
-                    { x: x + (bottomWidth - topWidth) / 2, y: y + (windowHeight - leftHeight) },  // topLeft
-                    { x: x + (bottomWidth + topWidth) / 2, y: y + (windowHeight - rightHeight) }, // topRight
-                    { x: x + bottomWidth, y: y + windowHeight },                               // bottomRight
-                    { x: x, y: y + windowHeight }                                              // bottomLeft
-                ];
-
-                const innerPoints = calculateInnerContour(outerPoints, offset);
-
-                // Рисуем внешний контур
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                outerPoints.forEach((point, i) => {
-                    if (i === 0) ctx.moveTo(point.x, point.y);
-                    else ctx.lineTo(point.x, point.y);
-                });
-                ctx.closePath();
-                ctx.stroke();
-
-                // Рисуем внутренний контур
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                innerPoints.forEach((point, i) => {
-                    if (i === 0) ctx.moveTo(point.x, point.y);
-                    else ctx.lineTo(point.x, point.y);
-                });
-                ctx.closePath();
-                ctx.stroke();
-
-                const centerX = x + bottomWidth / 2;
-                const centerY = y + windowHeight / 2;
-
-                ctx.fillText(`${win.id} (${win.fix})`, centerX, centerY);
-
-                ctx.fillText(`b=${win.top}`,
-                    (outerPoints[0].x + outerPoints[1].x) / 2,
-                    (outerPoints[0].y + outerPoints[1].y) / 2 + 20);
-
-                ctx.fillText(`b=${win.bottom}`,
-                    (outerPoints[2].x + outerPoints[3].x) / 2,
-                    outerPoints[2].y - 20);
-
-                ctx.save();
-                ctx.translate(outerPoints[3].x + 20, (outerPoints[0].y + outerPoints[3].y) / 2);
-                ctx.rotate(-Math.PI / 2);
-                ctx.fillText(`h=${win.left}`, 0, 0);
-                ctx.restore();
-
-                ctx.save();
-                ctx.translate(outerPoints[2].x - 20, (outerPoints[1].y + outerPoints[2].y) / 2);
-                ctx.rotate(Math.PI / 2);
-                ctx.fillText(`h=${win.right}`, 0, 0);
-                ctx.restore();
-
-                // Рисуем волнистые линии с толщиной 0.3
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 0.3;
-
-                if (win.zipper === '1') {
-                    // Волнистая линия по середине окна вертикально
-                    const midX = x + bottomWidth / 2;
-                    const startY = y + windowHeight;
-                    const endY = y + (windowHeight - Math.max(leftHeight, rightHeight));
-                    drawWavyLine(ctx, midX, startY, midX, endY);
-                } else if (win.zipper === '2') {
-                    const leftInnerPointTop = innerPoints[0]; // topLeft внутренний
-                    const leftInnerPointBottom = innerPoints[3]; // bottomLeft внутренний
-                    const rightInnerPointTop = innerPoints[1]; // topRight внутренний
-                    const rightInnerPointBottom = innerPoints[2]; // bottomRight внутренний
-
-                    // Левая волнистая линия сдвинута на +20px вправо
-                    const leftLineX = ((leftInnerPointTop.x + outerPoints[3].x) / 2 - 3) + 20;
-                    drawWavyLine(ctx, leftLineX, leftInnerPointBottom.y, leftLineX, leftInnerPointTop.y);
-
-                    // Правая волнистая линия сдвинута на -20px влево
-                    const rightLineX = ((rightInnerPointTop.x + outerPoints[2].x) / 2 + 3) - 20;
-                    drawWavyLine(ctx, rightLineX, rightInnerPointBottom.y, rightLineX, rightInnerPointTop.y);
-                }
-
-                x += bottomWidth + padding;
-                rowHeight = Math.max(rowHeight, windowHeight + 40);
+            const opt = {
+                margin: [5, 5, 0, 0],
+                filename: `Коммерческое_предложение_Триколория_Комфорта.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, width: 881, letterRendering: true, useCORS: true, logging: false, scrollY: 0 },
+                jsPDF: { unit: 'mm', format: [180, 260], orientation: 'portrait' }
+            };
+           
+            html2pdf().set(opt).from(element).save().then(() => {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }).catch(err => {
+                console.error("PDF error:", err);
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                alert("Ошибка при создании PDF. Попробуйте снова.");
             });
         }
-
-        function downloadDrawing() {
-            html2canvas(document.querySelector('canvas')).then(canvas => {
-                const link = document.createElement('a');
-                link.download = 'windows-drawing.png';
-                link.href = canvas.toDataURL();
-                link.click();
-            });
-        }
-
-        renderInputs();
+       
+        // Event listeners
+        citySelect.addEventListener('change', calculateResults);
+        filmTypeSelect.addEventListener('change', calculateResults);
+        windowCountSelect.addEventListener('change', () => { initializeDimensions(); calculateResults(); });
+        coefficientInput.addEventListener('input', calculateResults);
+        zipperLengthInput.addEventListener('input', calculateResults);
+        downloadPdfBtn.addEventListener('click', generatePDF);
+       
+        initializeDimensions();
+       
+        document.addEventListener('input', function(e) {
+            if(e.target.classList && (e.target.classList.contains('dimension-input') || e.target.classList.contains('dimension-fastening'))) {
+                calculateResults();
+            }
+        });
     </script>
 </body>
 </html>
-```
